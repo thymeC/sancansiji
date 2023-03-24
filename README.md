@@ -1,7 +1,7 @@
-# sancansiji
+# 三餐四季
 
-### Name it as a beautiful name 三餐四季
+## Reference to create this page
+docsify web: https://docsify.js.org/#/more-pages
+docsify github repo: https://github.com/docsifyjs/docsify
 
-just record for personal usage
-
-
+deploy: https://docsify.js.org/#/deploy
