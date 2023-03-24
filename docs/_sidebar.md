@@ -1,2 +1,3 @@
 - [Home](/)
 - [Tools](tools.md)
+- [DevOps](devops.md)
