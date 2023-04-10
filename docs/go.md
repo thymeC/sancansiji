@@ -1,5 +1,4 @@
-# 
-安装go
+# 安装go
 
 check go installed
 `go version`
@@ -202,20 +201,20 @@ func updateName(name *string) {
 ```
 import "math/cmplx"
 
-# 包名.X
+// 包名.X
 cmplx.Inf()
 ```
 
 创建包
 ```
-# 目录 
+// 目录 
 src/
   calculator/
     sum.go
 ```
 
 ```
-# sum.go   
+// sum.go   
 package calculator
 
 var logMessage = "[LOG]"
@@ -281,7 +280,7 @@ func main() {
 
 ```
 
-# may need retry
+// may need retry
 go get rsc.io/quote
 go run main.go
 ```
