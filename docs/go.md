@@ -1576,5 +1576,392 @@ func checkAPI(api string, ch chan string) {
 }
 ```
 
+```
+ch := make(chan string)
+
+for _, api := range apis {
+    go checkAPI(api, ch)
+}
+
+fmt.Print(<-ch)
+```
+
+
+```
+// range 用法
+package main
+import "fmt"
+
+func main() {
+    x := []string{"a", "b", "c"}
+    for v := range x {
+    fmt.Println(v) //prints 0, 1, 2
+    }
+    for _, v := range x {
+    fmt.Println(v) //prints a, b, c
+    }
+}
+```
+
+无缓冲channel, 默认是无缓冲的，没有接收就阻止发送
+```
+package main
+
+import (
+    "fmt"
+    "net/http"
+    "time"
+)
+
+func main() {
+    start := time.Now()
+
+    apis := []string{
+        "https://management.azure.com",
+        "https://dev.azure.com",
+        "https://api.github.com",
+        "https://outlook.office.com/",
+        "https://api.somewhereintheinternet.com/",
+        "https://graph.microsoft.com",
+    }
+
+    ch := make(chan string)
+
+    for _, api := range apis {
+        go checkAPI(api, ch)
+    }
+    // 读取操作需要和发送操作数量一致，接收>发送程序不能正常终止，接收<发送程序会提前终止
+    for i := 0; i < len(apis); i++ {
+        fmt.Print(<-ch)
+    }
+
+    elapsed := time.Since(start)
+    fmt.Printf("Done! It took %v seconds!\n", elapsed.Seconds())
+}
+
+func checkAPI(api string, ch chan string) {
+    _, err := http.Get(api)
+    if err != nil {
+        ch <- fmt.Sprintf("ERROR: %s is down!\n", api)
+        return
+    }
+
+    ch <- fmt.Sprintf("SUCCESS: %s is up and running!\n", api)
+}
+```
+
+有缓冲channel, 类似队列。
+每次向 channel 发送数据时，都会将元素添加到队列中。 然后，接收操作将从队列中删除该元素。 当 channel 已满时，任何发送操作都将等待，直到有空间保存数据。 相反，如果 channel 是空的且存在读取操作，程序则会被阻止，直到有数据要读取。
+```
+ch := make(chan string, 10)
+```
+
+```
+package main
+
+import (
+    "fmt"
+)
+
+func send(ch chan string, message string) {
+    ch <- message
+}
+
+func main() {
+    size := 4
+    ch := make(chan string, size)
+    send(ch, "one")
+    send(ch, "two")
+    send(ch, "three")
+    send(ch, "four")
+    fmt.Println("All data sent to the channel ...")
+
+    for i := 0; i < size; i++ {
+        fmt.Println(<-ch)
+    }
+
+    fmt.Println("Done!")
+}
+```
+Output
+```
+All data sent to the channel ...
+one
+two
+three
+four
+Done!
+```
+而如果改变size为2则会报错，因为send直接将内容放进channel, 它没有创建goroutine, 所以没有排队的操作。
+channel 与 goroutine 有着紧密的联系。 如果没有另一个 goroutine 从 channel 接收数据，则整个程序可能会永久处于被阻止状态。 正如你所见，这种情况确实会发生。
+我们建议在使用 channel 时始终使用 goroutine。
+
+
+可以更改 channel 的大小，用更小或更大的数字进行测试，程序仍能正常运行:
+```
+package main
+
+import (
+    "fmt"
+    "net/http"
+    "time"
+)
+
+func main() {
+    start := time.Now()
+
+    apis := []string{
+        "https://management.azure.com",
+        "https://dev.azure.com",
+        "https://api.github.com",
+        "https://outlook.office.com/",
+        "https://api.somewhereintheinternet.com/",
+        "https://graph.microsoft.com",
+    }
+
+    ch := make(chan string, 10)
+
+    for _, api := range apis {
+        go checkAPI(api, ch)
+    }
+
+    for i := 0; i < len(apis); i++ {
+        fmt.Print(<-ch)
+    }
+
+    elapsed := time.Since(start)
+    fmt.Printf("Done! It took %v seconds!\n", elapsed.Seconds())
+}
+
+func checkAPI(api string, ch chan string) {
+    _, err := http.Get(api)
+    if err != nil {
+        ch <- fmt.Sprintf("ERROR: %s is down!\n", api)
+        return
+    }
+
+    ch <- fmt.Sprintf("SUCCESS: %s is up and running!\n", api)
+}
+```
+
+在使用通道作为函数的参数时，可以指定通道是要“发送”数据还是“接收”数据。 随着程序的增长，可能会使用大量的函数，这时候，最好记录每个 channel 的意图，以便正确使用它们
+```
+chan<- int // it's a channel to only send data
+<-chan int // it's a channel to only receive data
+```
+
+```
+package main
+
+import "fmt"
+
+func send(ch chan<- string, message string) {
+    fmt.Printf("Sending: %#v\n", message)
+    ch <- message
+}
+
+func read(ch <-chan string) {
+    fmt.Printf("Receiving: %#v\n", <-ch)
+}
+
+func main() {
+    ch := make(chan string, 1)
+    send(ch, "Hello World!")
+    read(ch)
+}
+```
+多路复用
+有时，在使用多个 channel 时，需要等待事件发生。 例如，当程序正在处理的数据中出现异常时，可以包含一些逻辑来取消操作。
+select 语句的工作方式类似于 switch 语句，但它适用于 channel。 它会阻止程序的执行，直到它收到要处理的事件。 如果它收到多个事件，则会随机选择一个。
+select 语句的一个重要方面是，它在处理事件后完成执行。 如果要等待更多事件发生，则可能需要使用循环。
+让我们使用以下程序来看看 select 的运行情况：
+
+```
+package main
+
+import (
+    "fmt"
+    "time"
+)
+
+func process(ch chan string) {
+    time.Sleep(3 * time.Second)
+    ch <- "Done processing!"
+}
+
+func replicate(ch chan string) {
+    time.Sleep(1 * time.Second)
+    ch <- "Done replicating!"
+}
+
+func main() {
+    ch1 := make(chan string)
+    ch2 := make(chan string)
+    go process(ch1)
+    go replicate(ch2)
+
+    for i := 0; i < 2; i++ {
+        select {
+        case process := <-ch1:
+            fmt.Println(process)
+        case replicate := <-ch2:
+            fmt.Println(replicate)
+        }
+    }
+}
+
+```
+
+```
+// 输出
+Done replicating!
+Done processing!
+```
+
+请注意，replicate 函数首先完成，这就是首先在终端中看到其输出的原因。 main 函数存在一个循环，因为 select 语句在收到事件后立即结束，但我们仍在等待 process 函数完成。??
+
+单线程计算斐波那契数
+```
+package main
+
+import (
+    "fmt"
+    "math/rand"
+    "time"
+)
+
+func fib(number float64) float64 {
+    x, y := 1.0, 1.0
+    for i := 0; i < int(number); i++ {
+        x, y = y, x+y
+    }
+
+    r := rand.Intn(3)
+    time.Sleep(time.Duration(r) * time.Second)
+
+    return x
+}
+
+func main() {
+    start := time.Now()
+
+    for i := 1; i < 15; i++ {
+        n := fib(float64(i))
+    fmt.Printf("Fib(%v): %v\n", i, n)
+    }
+
+    elapsed := time.Since(start)
+    fmt.Printf("Done! It took %v seconds!\n", elapsed.Seconds())
+}
+```
+
+并发计算
+```
+package main
+
+import (
+    "fmt"
+    "math/rand"
+    "time"
+)
+
+func fib(number float64, ch chan string) {
+    x, y := 1.0, 1.0
+    for i := 0; i < int(number); i++ {
+        x, y = y, x+y
+    }
+
+    r := rand.Intn(3)
+    time.Sleep(time.Duration(r) * time.Second)
+
+    ch <- fmt.Sprintf("Fib(%v): %v\n", number, x)
+}
+
+func main() {
+    start := time.Now()
+
+    size := 15
+    ch := make(chan string, size)
+
+    for i := 0; i < size; i++ {
+        go fib(float64(i), ch)
+    }
+
+    for i := 0; i < size; i++ {
+        fmt.Printf(<-ch)
+    }
+
+    elapsed := time.Since(start)
+    fmt.Printf("Done! It took %v seconds!\n", elapsed.Seconds())
+}
+```
+
+使用两个无缓冲channel
+```
+package main
+
+import (
+    "fmt"
+    "time"
+)
+
+var quit = make(chan bool)
+
+func fib(c chan int) {
+    x, y := 1, 1
+
+    for {
+        select {
+            case c <- x:
+                x, y = y, x+y
+            case <-quit:
+                fmt.Println("Done calculating Fibonacci!")
+            return
+        }
+    }
+}
+
+func main() {
+    start := time.Now()
+
+    command := ""
+    data := make(chan int)
+
+    go fib(data)
+
+    for {
+        num := <-data
+        fmt.Println(num)
+        fmt.Scanf("%s", &command)
+        if command == "quit" {
+            quit <- true
+            break
+        }
+    }
+
+    time.Sleep(1 * time.Second)
+
+    elapsed := time.Since(start)
+    fmt.Printf("Done! It took %v seconds!\n", elapsed.Seconds())
+}
+```
+
+test
+
+```
+package bank
+
+import "testing"
+
+func TestAccount(t *testing.T) {
+
+}
+```
+
+Terminal run `go test -v`
+Go 将查找所有 *_test.go 文件来运行测试
+
+TODO: write bank project in training course
+
 Start next time:
-https://learn.microsoft.com/zh-cn/training/modules/go-concurrency/2-channels
+https://learn.microsoft.com/zh-cn/training/modules/go-write-test-program/1-project-files
