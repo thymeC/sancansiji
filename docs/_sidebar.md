@@ -2,5 +2,6 @@
 - [Tools](tools.md)
 - [Linux](linux.md)
 - [DevOps](devops.md)
+- [Server](server.md)
 - Programing
   - [Go](go.md)
