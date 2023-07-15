@@ -1,6 +1,6 @@
-## cloudflare 
+# cloudflare 
 
-### how to redirect openai
+## how to redirect openai
 
 使用场景：重定向 openai by [cloudflare](https://www.geeksforgeeks.org/what-is-cloudflare/)，目的是无障碍访问。 
 把弄好的url添加到苹果快捷指令，Siri可以调用快捷指令，从而通过Siri喊话chatgpt
