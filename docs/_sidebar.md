@@ -10,5 +10,9 @@
 - Server
   - [Server](server/cloudflare/cloudflare.md)
 - Programing
-  - [Programing](programing/programing.md)
+  - [Programing](programing/programing/programing.md)
+  - [Encoding](programing/programing/encoding.md)
   - [Go](programing/go/go.md)
+  - [Go Cobra](programing/go/go-cobra.md)
+- English
+  - [New Concept English](english/newconcept/new_concept_english.md)
