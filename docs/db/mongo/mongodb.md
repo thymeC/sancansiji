@@ -8,9 +8,9 @@ mongodb atlas, 云服务，用512M免费的空间
 
 ## Connect to mongodb atlas:
 1. mongosh  
-mongosh "mongodb+srv://cluster0.wu4ktza.mongodb.net/" --apiVersion 1 --username chenjing  
+mongosh "mongodb+srv://cluster0.xxx.mongodb.net/" --apiVersion 1 --username chenjing  
 2. compass  
-mongodb+srv://chenjing:<pwd>@cluster0.wu4ktza.mongodb.net/
+mongodb+srv://chenjing:<pwd>@cluster0.xxx.mongodb.net/
 
 
 ## Knowledge before use mongo

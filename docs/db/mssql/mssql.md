@@ -5,7 +5,7 @@ Reference:
 - https://www.w3schools.com/sql/sql_intro.asp
 - [SQL必知必会] [本 福达]
 
-## SQL
+## SQL Introduction
 SQL lets you access and manipulate databases
 
 SQL became a standard of the American National Standards Institute (ANSI) in 1986, and of the International Organization for Standardization 
@@ -27,7 +27,7 @@ RDBMS stands for Relational Database Management System.
 - SQL keywords are NOT case-sensitive
 - Semicolon after SQL statements
 
-### Some of The Most Important SQL Commands
+## Some of The Most Important SQL Commands
 
 ```sql
 SELECT - extracts data from a database
@@ -117,13 +117,13 @@ select order_num, count(*) as items from OrderItems group by order_num having co
 select vend_name, upper(vend_name) as vend_name_upcase from Vendors order by vend_name;
 
 ```
-常用的文本处理函数：
+#### 常用的文本处理函数：
 - LEFT, RIGHT, SUBSTRING
 - LTRIM, RTRIM, TRIM
 - LOWER, UPPER
 - LENGTH
 
-常用的日期和时间处理函数：
+#### 常用的日期和时间处理函数：
 - DATEPART, DATEDIFF, DATEADD
 - GETDATE, GETUTCDATE
 
@@ -147,7 +147,138 @@ SELECT DATEADD(month, 1, '2006-08-31');
 ![img.png](datepart.png)
 
 
-聚集函数
+#### 聚集函数
 - AVG, COUNT, MAX, MIN, SUM
 
+### 子查询
+```sql
+select cust_id 
+from orders 
+where order_num in (select order_num from orderitems where prod_id = 'RGAN01');
 
+select cust_name, 
+    cust_state, 
+    (select count(*) from orders where orders.cust_id = customers.cust_id) as orders
+from customers order by cust_name;
+```
+
+### 联结表
+
+![img.png](join.png)
+
+### 组合查询
+union
+
+主要有两种情况需要使用组合查询：
+- 在一个查询中从不同的表返回类似结构的数据
+- 对一个表执行多个查询， 按单个查询返回的结果组合成一个结果集
+任何具有多个where子句的查询都可以重写为使用union的查询
+
+union自动去除了重复的行，如果想保留重复的行，使用union all
+
+```sql
+
+
+```sql
+select cust_name, cust_contact, cust_email
+from customers
+where cust_state in ('IL', 'IN', 'MI')
+union
+select cust_name, cust_contact, cust_email
+from customers
+where cust_name = 'Fun4All';
+```
+
+```sql
+select cust_name, cust_contact, cust_email
+from customers
+where cust_state in ('IL', 'IN', 'MI') or cust_name = 'Fun4All';
+```
+这个例子中，union可能比where子句复杂些，但对于较复杂的过滤条件，或者从多个表中检索数据，使用union可能更简单
+
+
+### 插入数据
+
+插入有几种方式
+- 插入完整的行
+- 插入行的一部分
+- 插入某些查询的结果
+
+
+```sql
+-- 这里值要按顺序填充，如果和列对应不上，不太安全
+insert into customers
+values ('1000000006', 'Toy Land', '123 Any Street', 'New York', 'NY', '11111', 'USA', NULL, NULL);
+
+insert into customers(cust_id, cust_name, cust_address, cust_city, cust_state, cust_zip, cust_country, cust_contact, cust_email)
+values ('1000000006', 'Toy Land', '123 Any Street', 'New York', 'NY', '11111', 'USA', NULL, NULL);
+
+-- 插入行的一部分
+insert into customers(cust_id, cust_name, cust_address, cust_city, cust_state, cust_zip, cust_country)
+values ('1000000006', 'Toy Land', '123 Any Street', 'New York', 'NY', '11111', 'USA');
+
+-- 插入检索出的数据
+insert into customers(cust_id, cust_name, cust_address, cust_city, cust_state, cust_zip, cust_country)
+select cust_id, cust_name, cust_address, cust_city, cust_state, cust_zip, cust_country
+from custnew;
+
+-- 从一个表复制到另一个表
+-- create xxx select xxx
+create table custcopy as select * from customers;
+select * into custcopy from custcomers;
+```
+
+### 更新和删除数据
+
+```sql
+-- update 不要忘记where条件
+update customers
+set cust_email = 'kim@163.com',
+    cust_contact = 'Kim Kim'
+where cust_id = '1000000006';
+
+-- delete 不要忘记where条件
+delete from customers
+where cust_id = '1000000006';
+```
+
+使用update和delete的规则
+- 除非必要，否则都带上where
+- select先测试，然后再update或delete
+- 使用强制实施引用完整性的数据库，可以防止删除与其他表关联的行
+
+
+## 创建和操纵表
+
+```sql
+-- create table products
+create table products
+(
+    prod_id char(10) NOT NULL,
+    vend_id char(10) NOT NULL,
+    prod_name char(255) NOT NULL,
+    prod_price decimal(8,2) NOT NULL,
+    prod_desc varchar(1000) NULL
+);
+
+-- 指定默认值 with default
+create table orders
+(
+    order_num int NOT NULL,
+    order_date datetime NOT NULL DEFAULT GETDATE(),
+    cust_id char(10) NOT NULL
+);
+
+-- update table
+ALTER TABLE Vendors
+ADD vend_phone CHAR(20);
+
+ALTER TABLE Vendors
+DROP COLUMN vend_phone;
+
+-- delete table
+drop table vendors;
+
+-- rename table
+SQL Server 用sp_rename存储过程
+```
