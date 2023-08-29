@@ -282,3 +282,84 @@ drop table vendors;
 -- rename table
 SQL Server 用sp_rename存储过程
 ```
+
+### 存储过程
+
+存储过程，即把过程（一段sql statement）存储在数据库中，可以在需要的时候调用
+```sql
+CREATE PROCEDURE procedure_name
+AS
+sql_statement
+GO;
+```
+
+```sql
+-- 执行存储过程
+EXEC procedure_name;
+```
+
+```sql
+CREATE PROCEDURE SelectAllCustomers 
+    @City nvarchar(30)
+AS
+    SELECT * FROM Customers WHERE City = @City
+GO;
+
+EXEC SelectAllCustomers @City = 'London';
+
+CREATE PROCEDURE SelectAllCustomers 
+    @City nvarchar(30), 
+    @PostalCode nvarchar(10)
+AS
+    SELECT * FROM Customers WHERE City = @City AND PostalCode = @PostalCode
+GO;
+
+EXEC SelectAllCustomers @City = 'London', @PostalCode = 'WA1 1DP';
+
+USE AdventureWorks2022;  
+GO  
+CREATE PROCEDURE HumanResources.uspGetEmployeesTest2   
+    @LastName nvarchar(50),   
+    @FirstName nvarchar(50)   
+AS   
+
+    SET NOCOUNT ON;  
+    SELECT FirstName, LastName, Department  
+    FROM HumanResources.vEmployeeDepartmentHistory  
+    WHERE FirstName = @FirstName AND LastName = @LastName  
+    AND EndDate IS NULL;  
+GO
+
+EXECUTE HumanResources.uspGetEmployeesTest2 N'Ackerman', N'Pilar';  
+-- Or  
+EXEC HumanResources.uspGetEmployeesTest2 @LastName = N'Ackerman', @FirstName = N'Pilar';  
+GO  
+-- Or  
+EXECUTE HumanResources.uspGetEmployeesTest2 @FirstName = N'Pilar', @LastName = N'Ackerman';  
+GO
+
+CREATE PROCEDURE UpdateEmployee @EmpID int, @Name nchar(50),
+				@Department nchar(50), @Age int, @Salary real,
+				@Message nchar(30) output
+AS
+BEGIN
+SET NOCOUNT ON
+IF EXISTS(SELECT * FROM [DBO].[Employees] WHERE [Employee ID]=@EmpID)
+	BEGIN
+	SET @Message='Row Updated'
+	UPDATE Employees
+	SET [Name]= @Name,
+	Department=@Department,
+	Age=@Age,
+	Salary=@Salary
+	WHERE [Employee ID]=@EmpID
+	END
+ELSE
+	BEGIN
+	INSERT INTO Employees([Employee ID],[Name], [Department], [Age], [Salary])
+	VALUES(@EmpID, @Name, @Department, @Age, @Salary)
+	SET @Message='Row Inserted'
+	END
+END
+
+```
