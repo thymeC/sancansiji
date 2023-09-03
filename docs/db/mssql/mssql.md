@@ -362,4 +362,226 @@ ELSE
 	END
 END
 
+
+-- DECLARE 声明变量
+CREATE PROCEDURE MainlingListCount
+AS
+DECLARE @cnt INTEGER
+SELECT @cnt = COUNT(*) FROM Customers
+WHERE NOT cust_email IS NULL
+RETURN @cnt
+
+-- 使用存储过程
+DECLARE @RetrunValue INT
+EXEC @RetrunValue = MainlingListCount;
+SELECT @RetrunValue;
+
 ```
+
+### 事务
+使用事务处理（transaction processing), 通过确保成批的SQL操作要么完全执行，要么完全不执行，来维护数据库的完整性
+
+可以回退哪些语句？
+事务处理可以管理INSERT, UPDATE, DELETE语句，但不能管理SELECT语句, 回退SELECT也没有意义
+也不能回退CREATE TABLE, DROP TABLE, ALTER TABLE语句
+
+- 使用ROLLBACK回退事务
+```sql
+DELeTE from Orders;
+ROLLBACK;
+
+```
+
+- 使用COMMIT提交事务  
+一般的SQL语句都是针对数据库表直接执行和编写的，这就是所谓的隐式提交（implicit commit)，即提交（写、保存）操作是自动进行的
+在事务处理中，必须使用显式提交（explicit commit)来结束事务
+
+```sql
+BEGIN TRANSACTION
+...
+COMMIT TRANSACTION
+```
+
+```sql
+BEGIN TRANSACTION
+DELETE OrderItems where order_num = 20005;
+DELETE Orders where order_num = 20005;
+COMMIT TRANSACTION
+```
+
+- 使用保留点  
+使用简单的rollback和commit语句，就可以撤销或写入整个操作。但是对复杂的情况，可能需要部分提交或回撤
+可以使用保留点（savepoint)来实现这种部分提交或回撤
+可以在事务中设置很多保留点
+
+```sql
+SAVE TRANSACTION delete1;
+
+ROLLBACK TRANSACTION delete1;
+```
+
+```sql
+BEGIN TRANSACTION
+INSERT INTO Customers(cust_id, cust_name)
+VALUES('1000000006', 'Toy Land');
+SAVE TRANSACTION startOrder;
+INSERT INTO Orders(order_num, order_date, cust_id)
+VALUES(20006, '2022-01-01', '1000000006');
+IF @@ERROR <> 0
+    ROLLBACK TRANSACTION startOrder;
+INSERT INTO OrderItems(order_num, order_item, prod_id, quantity, item_price)
+VALUES(20006, 1, 'BR01', 100, 5.49);
+IF @@ERROR <> 0
+    ROLLBACK TRANSACTION startOrder;
+COMMIT TRANSACTION
+```
+
+后面操作失败（error不等于0），会回退到startOrder
+
+
+
+### 游标
+在SQL中，游标（Cursor）是一种用于在数据库中处理查询结果集的机制。游标允许您在结果集中逐行或逐批地遍历数据，并对每一行进行处理。
+
+以下是游标的几个常见用途：
+
+- 遍历结果集：当执行一个查询语句后，结果集通常包含多行数据。游标可以帮助您逐行地遍历结果集，以便对每一行进行处理。这对于需要对每一行进行特定操作或分析的情况非常有用。
+- 数据操作：使用游标可以在结果集的每一行上执行特定的数据操作，例如更新、插入或删除。您可以使用游标定位到特定的行，并在该行上执行所需的操作。
+- 数据检索：游标还可以用于在结果集中定位到特定的行，并从中检索所需的数据。这对于需要根据特定条件获取数据的情况非常有用。
+- 数据处理和转换：游标可以帮助您对结果集中的数据进行处理和转换。您可以在游标中使用条件和逻辑，对数据进行计算、合并、拆分或转换，以满足特定的需求。
+
+使用游标时，一般的操作流程包括以下步骤：
+
+- 声明游标：在SQL中，您需要声明一个游标，并定义其名称、数据类型和其他属性。
+- 打开游标：一旦游标被声明，您需要使用OPEN语句打开游标，并执行相应的查询。
+- 遍历结果集：使用FETCH语句可以从游标中获取一行或一批数据，并将游标移动到下一行。
+- 处理数据：对于每一行数据，您可以执行所需的操作，例如数据处理、数据操作或数据检索。
+- 关闭游标：在完成对结果集的处理后，使用CLOSE语句关闭游标，释放相关资源。
+
+需要注意的是，游标的使用可能会增加数据库的负担，并且在处理大量数据时可能导致性能下降。因此，在使用游标时，应谨慎考虑其使用场景和性能影响。  
+总结来说，游标是一种用于在SQL中处理查询结果集的机制，它允许您逐行或逐批地遍历数据，并对每一行进行处理、操作或检索。它为复杂的数据处理提供了灵活性和控制性。
+
+### SQL 高级特性
+
+#### 约束
+
+- 主键  
+主键是一种特殊的约束，用来保证值的唯一性，而且永不改动。  
+主键可以由一个或多个列组成，但每个表只能有一个主键。主键可以是任何数据类型，但通常使用整数或GUID。主键的值不能为NULL，且在表中必须是唯一的。
+
+任意的列满足以下条件，可以用于主键
+- 任意两行都不具有相同的主键值
+- 每行都必须具有一个主键值（主键列不允许NULL值）
+- 主键列中的值不能被修改或更新
+- 主键值不能重用（如果某行从表中删除，它的主键不能赋给以后的新行）
+
+```sql
+-- 创建时定义主键
+CREATE table venders
+(
+    vend_id char(10) NOT NULL PRIMARY KEY,
+    vend_name char(50) NOT NULL,
+    vend_address char(50) NULL,
+    vend_city char(50) NULL,
+    vend_state char(5) NULL,
+    vend_zip char(10) NULL,
+    vend_country char(50) NULL
+);
+```
+
+```sql
+-- 添加主键
+ALTER TABLE vendors
+ADD CONSTRAINT PRIMARY KEY (vend_id);
+```
+
+- 外键  
+外键是表中的一列，其值必须在另一个表的主键中存在。外键创建了两个表之间的关系，这些关系可以用于确保引用完整性。
+
+```sql
+create table Orders
+(
+    order_num int NOT NULL PRIMARY KEY,
+    order_date datetime NOT NULL,
+    cust_id char(10) NOT NULL FOREIGN KEY REFERENCES Customers(cust_id)
+);
+```
+- 唯一约束
+唯一约束用来保证一列（或多列）的值是唯一的。唯一约束与主键类似，但一个表可以有多个唯一约束，但只能有一个主键。
+
+它和主键的区别
+- 表只能有一个主键列，但可以有多个唯一列
+- 主键列不允许NULL值，而唯一列允许NULL值
+- 唯一约束列可修改或更新，主键列不允许
+- 主键列值不能重用，唯一约束列可以重用
+
+使用场景之一
+每个员工都有唯一的身份证号，但是我们不想把它用作主键，因为太长，因此每个员工除了身份证号，还有工号。  
+工号是主键，身份证号是唯一约束。需要身份证号也是唯一的，可以添加UNIQUE约束
+
+- 检查约束
+
+保证一列中的数据满足指定条件
+
+```sql
+create table OrderItems
+(
+    order_num int NOT NULL,
+    order_item int NOT NULL,
+    prod_id char(10) NOT NULL,
+    quantity int NOT NULL,
+    item_price decimal(8,2) NOT NULL,
+    CONSTRAINT CHECK (quantity >= 0 AND item_price >= 0)
+);
+```
+#### 索引
+
+索引是一种特殊的数据库结构，它以排序的方式存储在一个表或视图中的列值，以加快对表或视图中数据的访问。
+
+主键总是排序的，按主键检索特定行总是快速有效的操作
+但是搜索其他列中的值通常效率不高, 解决方法就是创建索引
+
+在开始创建索引时，应该记住以下内容
+- 索引改善检索操作的性能，但是会降低插入、删除和更新操作的性能
+- 索引数据可能要占用大量的存储空间
+- 索引只有在表中有足够的数据时才有意义
+- 索引用于数据过滤和排序
+- 可以在索引中定义多个列
+- 索引的效率随表数据的增加而改变，最好定期检查索引
+
+```sql
+CREATE INDEX idx_cust_id 
+ON Orders(cust_id);
+```
+
+#### 触发器
+
+触发器是特殊的存储过程，它在特定的表上执行，当对表进行INSERT, UPDATE, DELETE操作时，触发器会自动执行
+
+存储过程只简单的存储SQL语句，触发器与单个的表相关联，当对表进行操作时，触发器会自动执行
+
+触发器的常见用途
+- 保证数据一致，例如，当对订单表进行INSERT操作时，将州名转换为大写
+- 基于某个表的变动，更新其他表中的数据
+- 进行额外的验证并根据需要回退数据
+- 计算计算列的值或更新时间戳
+
+约束比触发器快，可能的话，尽量使用约束
+
+```sql
+CREATE TRIGGER custormer_state
+on Customers
+for INSERT, UPDATE
+AS
+UPDATE Customers
+SET cust_state = UPPER(cust_state)
+WHERE cust_id IN (SELECT cust_id FROM inserted);
+```
+
+#### 数据库安全
+
+需要保护的操作
+- 对数据库管理功能的访问，创建，更改，删除表
+- 对特定数据库或表的访问
+- 访问的类型（只读）
+- 仅通过视图或存储过程对表进行访问
